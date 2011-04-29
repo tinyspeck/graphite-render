@@ -92,6 +92,41 @@ def renderView(request):
     else: # Have to actually retrieve the data now
       data = []
       timeInterval = (requestOptions['startTime'], requestOptions['endTime'])
+
+      for timer in requestOptions['timers']:
+
+        series_90 = evaluateTarget("averageSeries("+timer+".percent_90)", timeInterval)[0]
+        series_50 = evaluateTarget("averageSeries("+timer+".percent_50)", timeInterval)[0]
+        series_10 = evaluateTarget("averageSeries("+timer+".percent_10)", timeInterval)[0]
+        series_lo = evaluateTarget("averageSeries("+timer+".min)", timeInterval)[0]
+
+        series_90.options['lowBound'] = series_50
+        series_90.options['areaFill'] = True
+        series_90.options['fixedColor'] = '#FF9999'
+        series_90.options['noLegend'] = True
+        data.append(series_90)
+
+        series_50.options['lowBound'] = series_10
+        series_50.options['areaFill'] = True
+        series_50.options['fixedColor'] = '#99FF99'
+        series_50.options['noLegend'] = True
+        data.append(series_50)
+
+        series_10.options['lowBound'] = series_lo
+        series_10.options['areaFill'] = True
+        series_10.options['fixedColor'] = '#DDFFDD'
+        series_10.options['noLegend'] = True
+        data.append(series_10)
+
+	series_lo.options['noDraw'] = True
+        series_lo.options['noLegend'] = True
+	data.append(series_lo)
+
+        series_mid = evaluateTarget("averageSeries("+timer+".percent_50)", timeInterval)[0]
+        series_mid.options['fixedColor'] = '#000000'
+        series_mid.name = 'timer: '+timer
+        data.append(series_mid)
+
       for target in requestOptions['targets']:
         t = time()
         seriesList = evaluateTarget(target, timeInterval)
@@ -156,6 +191,10 @@ def parseOptions(request):
     if target.lower().startswith('graphite.'): #Strip leading "Graphite." as a convenience
       target = target[9:]
     requestOptions['targets'].append(target)
+
+  requestOptions['timers'] = []
+  for stat in queryParams.getlist('timer'):
+    requestOptions['timers'].append(stat)
 
   if 'pickle' in queryParams:
     requestOptions['pickle'] = True

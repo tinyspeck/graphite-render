@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-import os, cairo, math, itertools
+import os, cairo, math, itertools, random
 from time import strftime, localtime, timezone, altzone, daylight, tzset, mktime
 from calendar import timegm
 from urllib import unquote_plus
@@ -344,7 +344,10 @@ class LineGraph(Graph):
     assert self.pieMode in self.validPieModes, "Invalid pie mode!"
 
     for series in self.data:
-      series.color = self.colors.next()
+      if series.options.has_key('fixedColor'):
+        series.color = series.options['fixedColor']
+      else:
+        series.color = self.colors.next()
 
     titleSize = self.defaultFontParams['size'] + math.floor( math.log(self.defaultFontParams['size']) )
     self.setFont( size=titleSize )
@@ -356,7 +359,10 @@ class LineGraph(Graph):
     self.setFont()
 
     if not params.get('hideLegend', len(self.data) > settings.LEGEND_MAX_ITEMS):
-      elements = [ (series.name,series.color) for series in self.data ]
+      elements = []
+      for series in self.data:
+        if not series.options.has_key('noLegend'):
+          elements.append((series.name,series.color))
       self.drawLegend(elements)
 
     #Setup axes, labels, and grid
@@ -383,11 +389,15 @@ class LineGraph(Graph):
 
     if not self.params.get('hideAxes',False):
       self.drawLabels()
-      if not self.params.get('hideGrid',False): #hideAxes implies hideGrid
-        self.drawGridLines()
 
     #Finally, draw the graph lines
     self.drawLines()
+
+    if not self.params.get('hideAxes',False):
+      if not self.params.get('hideGrid',False): #hideAxes implies hideGrid
+        self.drawGridLines()
+
+
 
   def drawVTitle(self,text):
     lineHeight = self.getExtents()['maxHeight']
@@ -450,6 +460,9 @@ class LineGraph(Graph):
 
     for series in self.data:
 
+      if series.options.has_key('noDraw'):
+        continue
+
       if series.options.has_key('lineWidth'): # adjusts the lineWidth of this line if option is set on the series
         self.ctx.set_line_width(series.options['lineWidth'])
 
@@ -463,23 +476,46 @@ class LineGraph(Graph):
       self.setColor( series.color, series.options.get('alpha') or 1.0)
 
       fromNone = True
+      idx = -1
+      last_y = 0
+      return_path = []
 
       for value in series:
+        idx = idx+1
+
         if value is None and self.params.get('drawNullAsZero'):
           value = 0.0
 
         if value is None:
 
-          if not fromNone and self.areaMode != 'none': #Close off and fill area before unknown interval
-            self.ctx.line_to(x, self.area['ymax'])
-            self.ctx.close_path()
-            self.ctx.fill()
+          if not fromNone:
+            if series.options.has_key('areaFill'):
+              # close up the shape by drawing to the previous bottom points in reverse
+              for pair in reverse_sort(return_path):
+                self.ctx.line_to(pair[0], pair[1])
+              return_path = []
+              self.ctx.close_path()
+              self.ctx.fill()
+            elif self.areaMode != 'none': #Close off and fill area before unknown interval
+              self.ctx.line_to(x, self.area['ymax'])
+              self.ctx.close_path()
+              self.ctx.fill()
           x += series.xStep
           fromNone = True
 
         else:
           y = self.area['ymax'] - ((float(value) - self.yBottom) * self.yScaleFactor)
-          if y < 0: y = 0 
+          if y < 0: y = 0
+
+          if series.options.has_key('areaFill'):
+             value_btm = random.randint(5, 15)
+             value_btm = series.options['lowBound'][idx]
+             if value_btm is None:
+               y_btm = 0
+             else:
+               y_btm = self.area['ymax'] - ((float(value_btm) - self.yBottom) * self.yScaleFactor)
+               if y_btm < 0: y_btm = 0
+             return_path.append((x+series.xStep,y_btm))
 
           if series.options.has_key('drawAsInfinite') and value > 0:
             self.ctx.move_to(x, self.area['ymax'])
@@ -491,7 +527,10 @@ class LineGraph(Graph):
           if self.lineMode == 'staircase':
             if fromNone:
 
-              if self.areaMode != 'none':
+              if series.options.has_key('areaFill'):
+                self.ctx.move_to(x,y_btm)
+                self.ctx.line_to(x,y)
+              elif self.areaMode != 'none':
                 self.ctx.move_to(x,self.area['ymax'])
                 self.ctx.line_to(x,y)
               else:
@@ -506,7 +545,10 @@ class LineGraph(Graph):
           elif self.lineMode == 'slope':
             if fromNone:
 
-              if self.areaMode != 'none':
+              if series.options.has_key('areaFill'):
+                self.ctx.move_to(x,y_btm)
+                self.ctx.line_to(x,y)
+              elif self.areaMode != 'none':
                 self.ctx.move_to(x,self.area['ymax'])
                 self.ctx.line_to(x,y)
               else:
@@ -517,7 +559,13 @@ class LineGraph(Graph):
 
           fromNone = False
 
-      if self.areaMode != 'none':
+      if series.options.has_key('areaFill'):
+        for pair in reverse_sort(return_path):
+          self.ctx.line_to(pair[0], pair[1])
+        self.ctx.close_path()
+        self.ctx.fill()
+
+      elif self.areaMode != 'none':
         self.ctx.line_to(x, self.area['ymax'])
         self.ctx.close_path()
         self.ctx.fill()
