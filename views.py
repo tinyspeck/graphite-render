@@ -95,6 +95,11 @@ def renderView(request):
 
       for timer in requestOptions['timers']:
 
+        colors = ['#FFDDDD', '#FF9999', '#99FF99', '#DDFFDD']
+        if timer.startswith('^'):
+          timer = timer[1:]
+          colors.reverse()
+
         series_90 = evaluateTarget("averageSeries("+timer+".percent_90)", timeInterval)[0]
         series_50 = evaluateTarget("averageSeries("+timer+".percent_50)", timeInterval)[0]
         series_10 = evaluateTarget("averageSeries("+timer+".percent_10)", timeInterval)[0]
@@ -102,19 +107,19 @@ def renderView(request):
 
         series_90.options['lowBound'] = series_50
         series_90.options['areaFill'] = True
-        series_90.options['fixedColor'] = '#FF9999'
+        series_90.options['fixedColor'] = colors[1]
         series_90.options['noLegend'] = True
         data.append(series_90)
 
         series_50.options['lowBound'] = series_10
         series_50.options['areaFill'] = True
-        series_50.options['fixedColor'] = '#99FF99'
+        series_50.options['fixedColor'] = colors[2]
         series_50.options['noLegend'] = True
         data.append(series_50)
 
         series_10.options['lowBound'] = series_lo
         series_10.options['areaFill'] = True
-        series_10.options['fixedColor'] = '#DDFFDD'
+        series_10.options['fixedColor'] = colors[3]
         series_10.options['noLegend'] = True
         data.append(series_10)
 
@@ -123,7 +128,7 @@ def renderView(request):
 	data.append(series_lo)
 
         series_mid = evaluateTarget("averageSeries("+timer+".percent_50)", timeInterval)[0]
-        series_mid.options['fixedColor'] = '#000000'
+        series_mid.options['fixedColor'] = '#474747'
         series_mid.name = 'timer: '+timer
         data.append(series_mid)
 
