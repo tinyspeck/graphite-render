@@ -477,7 +477,6 @@ class LineGraph(Graph):
 
       fromNone = True
       idx = -1
-      last_y = 0
       return_path = []
 
       for value in series:
@@ -485,6 +484,11 @@ class LineGraph(Graph):
 
         if value is None and self.params.get('drawNullAsZero'):
           value = 0.0
+
+        if series.options.has_key('areaFill'):
+           value_btm = series.options['lowBoundData'][idx]
+           if value_btm is None:
+             value = None
 
         if value is None:
 
@@ -508,14 +512,10 @@ class LineGraph(Graph):
           if y < 0: y = 0
 
           if series.options.has_key('areaFill'):
-             value_btm = random.randint(5, 15)
-             value_btm = series.options['lowBound'][idx]
-             if value_btm is None:
-               y_btm = 0
-             else:
-               y_btm = self.area['ymax'] - ((float(value_btm) - self.yBottom) * self.yScaleFactor)
-               if y_btm < 0: y_btm = 0
-             return_path.append((x+series.xStep,y_btm))
+             value_btm = series.options['lowBoundData'][idx]
+             y_btm = self.area['ymax'] - ((float(value_btm) - self.yBottom) * self.yScaleFactor)
+             if y_btm < 0: y_btm = 0
+             return_path.append((x + series.xStep, y_btm))
 
           if series.options.has_key('drawAsInfinite') and value > 0:
             self.ctx.move_to(x, self.area['ymax'])
@@ -596,6 +596,13 @@ class LineGraph(Graph):
         series.xStep = (numberOfPixels * pointsPerPixel) / numberOfDataPoints
       else:
         series.xStep = bestXStep
+      if series.options.has_key('areaFill'):
+         low_data = series.options['lowBound']
+         low_data.consolidate(series.valuesPerPoint)
+         low_points = []
+         for value in low_data:
+           low_points.append(value)
+         series.options['lowBoundData'] = low_points
 
   def setupYAxis(self):
     seriesWithMissingValues = [ series for series in self.data if None in series ]
