@@ -20,6 +20,6 @@ To render a timer, add this to the render URL:
 Examples
 --------
 
-<img src="http://www.iamcal.com/images/fps_sample.png" />
+<img src="http://www.iamcal.com/images/graphite_timers_2.png" />
 
-(Need some better ones!)
+<img src="http://www.iamcal.com/images/graphite_timers_3.png" />
