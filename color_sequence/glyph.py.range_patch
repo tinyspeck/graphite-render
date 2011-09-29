@@ -1,0 +1,39 @@
+--- glyph.py.precolors	2011-09-29 15:54:16.000000000 -0700
++++ glyph.py.current	2011-09-29 15:52:58.000000000 -0700
+@@ -19,6 +19,7 @@
+ from ConfigParser import SafeConfigParser
+ from django.conf import settings
+ from graphite.render.datatypes import TimeSeries
++from colorsys import hsv_to_rgb
+ 
+ colorAliases = {
+   'black' : (0,0,0),
+@@ -343,11 +344,19 @@
+     self.pieMode = params.get('pieMode', 'maximum').lower()
+     assert self.pieMode in self.validPieModes, "Invalid pie mode!"
+ 
++    colors_count = 0
++
+     for series in self.data:
+       if series.options.has_key('fixedColor'):
+         series.color = series.options['fixedColor']
+       else:
+-        series.color = self.colors.next()
++        colors_count = colors_count + 1
++
++    i = 0
++    for series in self.data:
++      if not series.options.has_key('fixedColor'):
++        series.color = get_sequence_color(float(i) / float(colors_count))
++        i = i + 1
+ 
+     titleSize = self.defaultFontParams['size'] + math.floor( math.log(self.defaultFontParams['size']) )
+     self.setFont( size=titleSize )
+@@ -975,3 +984,7 @@
+       return v, prefix
+ 
+   return v, ""
++
++def get_sequence_color(value):
++  rgb = hsv_to_rgb(value, 1, 0.9)  
++  return '%02X%02X%02X' % (255*rgb[0], 255*rgb[1], 255*rgb[2])
