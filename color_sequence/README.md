@@ -7,4 +7,4 @@ Patches are included for vanilla Graphite, and the range coloring modification w
 
 Example graph:
 
-
+<img src="https://github.com/tinyspeck/graphite-render/raw/master/color_sequence/rainbow.png" />
